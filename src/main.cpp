@@ -9,7 +9,7 @@ std::unique_ptr<sf::CircleShape> createBullet(int width) {
 	bullet->setFillColor(sf::Color::Red);
 	sf::Vector2f newBulletPosition = bullet->getPosition();
 	newBulletPosition.y = -bullet->getRadius();
-	newBulletPosition.x = rand() % width;
+	newBulletPosition.x = static_cast<float>(rand() % width);
 	bullet->setPosition(newBulletPosition);
 	return bullet;
 }
@@ -22,7 +22,7 @@ std::unique_ptr<sf::CircleShape> createPlayer(sf::Vector2u windowSize) {
 }
 
 sf::Font font;
-std::unique_ptr<sf::Text> createText(sf::Vector2u windowSize, sf::String characters) {
+std::unique_ptr<sf::Text> createText(sf::String characters) {
 	if (font.getInfo().family == "") {
 		font.loadFromFile("Resources/OpenSans-Regular.ttf");
 	}
@@ -39,8 +39,8 @@ int WinMain()
 	sf::RenderWindow window(sf::VideoMode(500, 500), "SFML works!");
 	window.setVerticalSyncEnabled(true);
 	auto player = createPlayer(window.getSize());
-	auto pausedText = createText(window.getSize(), "Paused");
-	auto gameOverText = createText(window.getSize(), "Game Over!");
+	auto pausedText = createText("Paused");
+	auto gameOverText = createText("Game Over!");
 	float fraps;
 	auto bulletSpeed = DEFAULT_BULLET_SPEED;
 	auto playerSpeed = 400.0f;
@@ -155,7 +155,7 @@ int WinMain()
 				newBulletPosition.y = bullet->getPosition().y + bulletSpeed * fraps;
 				if (newBulletPosition.y >= window.getSize().y) {
 					newBulletPosition.y = -bullet->getRadius();
-					newBulletPosition.x = rand() % window.getSize().x;
+					newBulletPosition.x = static_cast<float>(rand() % window.getSize().x);
 				}
 				bullet->setPosition(newBulletPosition);
 				if (newBulletPosition.y == -bullet->getRadius()) {
