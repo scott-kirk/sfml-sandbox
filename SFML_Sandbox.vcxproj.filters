@@ -22,4 +22,12 @@
   <ItemGroup>
     <Font Include="Resources\OpenSans-Regular.ttf" />
   </ItemGroup>
+  <ItemGroup>
+    <Media Include="Resources\bullet.wav">
+      <Filter>Resource Files</Filter>
+    </Media>
+    <Media Include="Resources\background-music.wav">
+      <Filter>Resource Files</Filter>
+    </Media>
+  </ItemGroup>
 </Project>

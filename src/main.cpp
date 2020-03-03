@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <list>
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 
 std::unique_ptr<sf::CircleShape> createBullet(int width) {
 	std::unique_ptr<sf::CircleShape> bullet(new sf::CircleShape);
@@ -50,6 +51,14 @@ int WinMain()
 	std::list<sf::Drawable*> drawables;
 	std::list<std::unique_ptr<sf::CircleShape>> bullets;
 	bullets.push_back(std::move(createBullet(window.getSize().x)));
+	sf::Music music;
+	music.openFromFile("Resources/background-music.wav");
+	music.setLoop(true);
+	music.play();
+	sf::SoundBuffer bulletSoundBuffer;
+	bulletSoundBuffer.loadFromFile("Resources/bullet.wav");
+	sf::Sound bulletSound;
+	bulletSound.setBuffer(bulletSoundBuffer);
 
 	while (window.isOpen()) {
 		// reset fps counter and list of shapes that need drawing
@@ -65,7 +74,11 @@ int WinMain()
 			if (event.type == sf::Event::KeyPressed) {
 				switch (event.key.code) {
 					case  sf::Keyboard::Escape: {
-						paused = !paused;
+						if (paused) {
+							paused = false;
+						} else {
+							paused = true;
+						}
 						break;
 					}
 					case  sf::Keyboard::Space: {
@@ -123,6 +136,9 @@ int WinMain()
 
 		// physics logic
 		if (!paused && !gameOver) {
+			if (music.getStatus() == music.Paused) {
+				music.play();
+			}
 			// increase difficulty every 10 seconds
 			if (difficultyTimer.getElapsedTime().asSeconds() > 10) {
 				bulletSpeed *= 1.1f;
@@ -133,12 +149,18 @@ int WinMain()
 			// make each bullet move and reset it to the top if it reached the bottom of the screen
 			for (auto&& bullet : bullets) {
 				sf::Vector2f newBulletPosition = bullet->getPosition();
+				if (newBulletPosition.y == -bullet->getRadius()) {
+					bulletSound.play();
+				}
 				newBulletPosition.y = bullet->getPosition().y + bulletSpeed * fraps;
 				if (newBulletPosition.y >= window.getSize().y) {
 					newBulletPosition.y = -bullet->getRadius();
 					newBulletPosition.x = rand() % window.getSize().x;
 				}
 				bullet->setPosition(newBulletPosition);
+				if (newBulletPosition.y == -bullet->getRadius()) {
+					bulletSound.play();
+				}
 			}
 
 			// move the player in the correct direction
@@ -156,6 +178,10 @@ int WinMain()
 				newPlayerPosition.y = std::min(player->getPosition().y + playerSpeed * fraps, (float)window.getSize().y - player->getRadius());
 			}
 			player->setPosition(newPlayerPosition);
+		} else if (paused) {
+			if (music.getStatus() == music.Playing) {
+				music.pause();
+			}
 		}
 
 		// draw player and bullets and do collision detection
@@ -164,15 +190,13 @@ int WinMain()
 			drawables.push_back(bullet.get());
 			if (player->getGlobalBounds().intersects(bullet->getGlobalBounds())) {
 				gameOver = true;
-				break;
 			}
 		}
 
 		// show proper menus based on flags
 		if (gameOver) {
 			drawables.push_back(gameOverText.get());
-		}
-		else if (paused) {
+		} else if (paused) {
 			drawables.push_back(pausedText.get());
 		}
 
