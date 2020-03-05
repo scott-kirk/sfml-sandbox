@@ -3,21 +3,21 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
 
-std::unique_ptr<sf::CircleShape> createBullet(int width) {
-	std::unique_ptr<sf::CircleShape> bullet(new sf::CircleShape);
-	bullet->setRadius(10.0f);
+std::unique_ptr<sf::RectangleShape> createBullet(int width) {
+	std::unique_ptr<sf::RectangleShape> bullet(new sf::RectangleShape);
+	bullet->setSize(sf::Vector2f(10.0f, 10.0f));
 	bullet->setFillColor(sf::Color::Red);
 	sf::Vector2f newBulletPosition = bullet->getPosition();
-	newBulletPosition.y = -bullet->getRadius();
+	newBulletPosition.y = -bullet->getSize().y;
 	newBulletPosition.x = static_cast<float>(rand() % width);
 	bullet->setPosition(newBulletPosition);
 	return bullet;
 }
 
-std::unique_ptr<sf::CircleShape> createPlayer(sf::Vector2u windowSize) {
-	std::unique_ptr<sf::CircleShape> player(new sf::CircleShape(50.f));
+std::unique_ptr<sf::RectangleShape> createPlayer(sf::Vector2u windowSize) {
+	std::unique_ptr<sf::RectangleShape> player(new sf::RectangleShape(sf::Vector2f(50.f, 50.f)));
 	player->setFillColor(sf::Color::Green);
-	player->setPosition(sf::Vector2f(windowSize.x / 2 - player->getRadius(), windowSize.y - player->getRadius() * 2));
+	player->setPosition(sf::Vector2f(windowSize.x / 2 - player->getSize().x, windowSize.y - player->getSize().y * 2));
 	return player;
 }
 
@@ -49,7 +49,7 @@ int WinMain()
 	bool upFlag = false, downFlag = false, leftFlag = false, rightFlag = false;
 	bool paused = false, gameOver = false;
 	std::list<sf::Drawable*> drawables;
-	std::list<std::unique_ptr<sf::CircleShape>> bullets;
+	std::list<std::unique_ptr<sf::RectangleShape>> bullets;
 	bullets.push_back(std::move(createBullet(window.getSize().x)));
 	sf::Music music;
 	music.openFromFile("Resources/background-music.wav");
@@ -86,7 +86,7 @@ int WinMain()
 							gameOver = false;
 							paused = false;
 							bullets.clear();
-							player->setPosition(sf::Vector2f(window.getSize().x / 2 - player->getRadius(), window.getSize().y - player->getRadius() * 2));
+							player->setPosition(sf::Vector2f(window.getSize().x / 2 - player->getSize().x, window.getSize().y - player->getSize().y * 2));
 							bulletSpeed = DEFAULT_BULLET_SPEED;
 							bullets.push_back(std::move(createBullet(window.getSize().x)));
 							difficultyTimer.restart();
@@ -149,16 +149,16 @@ int WinMain()
 			// make each bullet move and reset it to the top if it reached the bottom of the screen
 			for (auto&& bullet : bullets) {
 				sf::Vector2f newBulletPosition = bullet->getPosition();
-				if (newBulletPosition.y == -bullet->getRadius()) {
+				if (newBulletPosition.y == -bullet->getSize().y) {
 					bulletSound.play();
 				}
 				newBulletPosition.y = bullet->getPosition().y + bulletSpeed * fraps;
 				if (newBulletPosition.y >= window.getSize().y) {
-					newBulletPosition.y = -bullet->getRadius();
+					newBulletPosition.y = -bullet->getSize().y;
 					newBulletPosition.x = static_cast<float>(rand() % window.getSize().x);
 				}
 				bullet->setPosition(newBulletPosition);
-				if (newBulletPosition.y == -bullet->getRadius()) {
+				if (newBulletPosition.y == -bullet->getSize().y) {
 					bulletSound.play();
 				}
 			}
@@ -166,16 +166,16 @@ int WinMain()
 			// move the player in the correct direction
 			sf::Vector2f newPlayerPosition = player->getPosition();
 			if (leftFlag) {
-				newPlayerPosition.x = std::max(player->getPosition().x - playerSpeed * fraps, -player->getRadius());
+				newPlayerPosition.x = std::max(player->getPosition().x - playerSpeed * fraps, -player->getSize().x);
 			}
 			if (rightFlag) {
-				newPlayerPosition.x = std::min(player->getPosition().x + playerSpeed * fraps, (float)window.getSize().x - player->getRadius());
+				newPlayerPosition.x = std::min(player->getPosition().x + playerSpeed * fraps, (float)window.getSize().x - player->getSize().x);
 			}
 			if (upFlag) {
-				newPlayerPosition.y = std::max(player->getPosition().y - playerSpeed * fraps, -player->getRadius());
+				newPlayerPosition.y = std::max(player->getPosition().y - playerSpeed * fraps, -player->getSize().y);
 			}
 			if (downFlag) {
-				newPlayerPosition.y = std::min(player->getPosition().y + playerSpeed * fraps, (float)window.getSize().y - player->getRadius());
+				newPlayerPosition.y = std::min(player->getPosition().y + playerSpeed * fraps, (float)window.getSize().y - player->getSize().y);
 			}
 			player->setPosition(newPlayerPosition);
 		} else if (paused) {
