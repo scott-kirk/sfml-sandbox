@@ -3,14 +3,78 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
 
-std::unique_ptr<sf::RectangleShape> createBullet(int width) {
-	std::unique_ptr<sf::RectangleShape> bullet(new sf::RectangleShape);
-	bullet->setSize(sf::Vector2f(10.0f, 10.0f));
-	bullet->setFillColor(sf::Color::Red);
-	sf::Vector2f newBulletPosition = bullet->getPosition();
-	newBulletPosition.y = -bullet->getSize().y;
-	newBulletPosition.x = static_cast<float>(rand() % width);
-	bullet->setPosition(newBulletPosition);
+class Bullet {
+public:
+	sf::RectangleShape shape;
+	sf::Vector2f direction;
+	float speed;
+	Bullet(sf::Vector2u);
+	void newPosition(sf::Vector2u windowSize) {
+		sf::Vector2f newBulletPosition = shape.getPosition();
+		int randomPos = rand();
+		direction.x = 1.f;
+		direction.y = 1.f;
+		if (randomPos % 2 == 0) {
+			direction.x = static_cast<float>(randomPos % 100 + 1);
+			direction.y = static_cast<float>(randomPos % 200 - 100);
+			if (rand() % 2 == 0) {
+				newBulletPosition.x = 0;
+			} else {
+				newBulletPosition.x = static_cast<float>(windowSize.x);
+				direction.x *= -1.f;
+			}
+			newBulletPosition.y = static_cast<float>(randomPos % windowSize.x);
+		} else {
+			direction.x = static_cast<float>(randomPos % 200 - 100);
+			direction.y = static_cast<float>(randomPos % 100 + 1);
+			newBulletPosition.x = static_cast<float>(randomPos % windowSize.y);
+			if (rand() % 2 == 0) {
+				newBulletPosition.y = 0;
+			}
+			else {
+				newBulletPosition.y = static_cast<float>(windowSize.y);
+				direction.y *= -1.f;
+			}
+		}
+		direction /= sqrtf((direction.x * direction.x) + (direction.y * direction.y));
+		shape.setPosition(newBulletPosition);
+	}
+	void tick(float fraps, sf::Vector2u windowSize) {
+		sf::Vector2f nextPosition;
+		nextPosition.x = shape.getPosition().x + (direction.x * speed * fraps);
+		nextPosition.y = shape.getPosition().y + (direction.y * speed * fraps);
+		if (nextPosition.x > windowSize.x || nextPosition.x < 0) {
+			direction.x *= -1;
+			if (nextPosition.x < 0) {
+				nextPosition.x = 0;
+			} else {
+				nextPosition.x = static_cast<float>(windowSize.x);
+			}
+		}
+		if (nextPosition.y > windowSize.y || nextPosition.y < 0) {
+			direction.y *= -1;
+			if (nextPosition.y < 0) {
+				nextPosition.y = 0;
+			} else {
+				nextPosition.y = static_cast<float>(windowSize.y);
+			}
+		}
+		shape.setPosition(nextPosition);
+	}
+	void difficultyTick() {
+		speed *= 1.1f;
+	}
+};
+Bullet::Bullet(sf::Vector2u windowSize) {
+	speed = 200.0f;
+	shape = sf::RectangleShape();
+	shape.setSize(sf::Vector2f(10.0f, 10.0f));
+	shape.setFillColor(sf::Color::Red);
+	newPosition(windowSize);
+}
+
+std::unique_ptr<Bullet> createBullet(sf::Vector2u windowSize) {
+	std::unique_ptr<Bullet> bullet(new Bullet(windowSize));
 	return bullet;
 }
 
@@ -32,8 +96,6 @@ std::unique_ptr<sf::Text> createText(sf::String characters) {
 	return text;
 }
 
-const auto DEFAULT_BULLET_SPEED = 200.0f;
-
 int WinMain()
 {
 	sf::RenderWindow window(sf::VideoMode(500, 500), "SFML works!");
@@ -42,15 +104,14 @@ int WinMain()
 	auto pausedText = createText("Paused");
 	auto gameOverText = createText("Game Over!");
 	float fraps;
-	auto bulletSpeed = DEFAULT_BULLET_SPEED;
 	auto playerSpeed = 400.0f;
 	sf::Clock fps;
 	sf::Clock difficultyTimer;
 	bool upFlag = false, downFlag = false, leftFlag = false, rightFlag = false;
 	bool paused = false, gameOver = false;
 	std::list<sf::Drawable*> drawables;
-	std::list<std::unique_ptr<sf::RectangleShape>> bullets;
-	bullets.push_back(std::move(createBullet(window.getSize().x)));
+	std::list<std::unique_ptr<Bullet>> bullets;
+	bullets.push_back(std::move(createBullet(window.getSize())));
 	sf::Music music;
 	music.openFromFile("Resources/background-music.wav");
 	music.setLoop(true);
@@ -87,8 +148,7 @@ int WinMain()
 							paused = false;
 							bullets.clear();
 							player->setPosition(sf::Vector2f(window.getSize().x / 2 - player->getSize().x, window.getSize().y - player->getSize().y * 2));
-							bulletSpeed = DEFAULT_BULLET_SPEED;
-							bullets.push_back(std::move(createBullet(window.getSize().x)));
+							bullets.push_back(std::move(createBullet(window.getSize())));
 							difficultyTimer.restart();
 						}
 						break;
@@ -141,26 +201,16 @@ int WinMain()
 			}
 			// increase difficulty every 10 seconds
 			if (difficultyTimer.getElapsedTime().asSeconds() > 10) {
-				bulletSpeed *= 1.1f;
-				bullets.push_back(std::move(createBullet(window.getSize().x)));
+				for (auto&& bullet : bullets) {
+					bullet->difficultyTick();
+				}
+				bullets.push_back(std::move(createBullet(window.getSize())));
 				difficultyTimer.restart();
 			}
 
 			// make each bullet move and reset it to the top if it reached the bottom of the screen
 			for (auto&& bullet : bullets) {
-				sf::Vector2f newBulletPosition = bullet->getPosition();
-				if (newBulletPosition.y == -bullet->getSize().y) {
-					bulletSound.play();
-				}
-				newBulletPosition.y = bullet->getPosition().y + bulletSpeed * fraps;
-				if (newBulletPosition.y >= window.getSize().y) {
-					newBulletPosition.y = -bullet->getSize().y;
-					newBulletPosition.x = static_cast<float>(rand() % window.getSize().x);
-				}
-				bullet->setPosition(newBulletPosition);
-				if (newBulletPosition.y == -bullet->getSize().y) {
-					bulletSound.play();
-				}
+				bullet->tick(fraps, window.getSize());
 			}
 
 			// move the player in the correct direction
@@ -187,8 +237,8 @@ int WinMain()
 		// draw player and bullets and do collision detection
 		drawables.push_back(player.get());
 		for (auto&& bullet : bullets) {
-			drawables.push_back(bullet.get());
-			if (player->getGlobalBounds().intersects(bullet->getGlobalBounds())) {
+			drawables.push_back(&bullet->shape);
+			if (player->getGlobalBounds().intersects(bullet->shape.getGlobalBounds())) {
 				gameOver = true;
 			}
 		}
