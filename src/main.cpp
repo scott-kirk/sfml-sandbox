@@ -97,11 +97,13 @@ std::unique_ptr<sf::Text> createText(sf::String characters) {
 }
 
 int WinMain() {
-  sf::RenderWindow window(sf::VideoMode(500, 500), "SFML works!");
+  sf::RenderWindow window(sf::VideoMode(500, 500), "Bullet Time");
   window.setVerticalSyncEnabled(true);
   auto player = createPlayer(window.getSize());
   auto pausedText = createText("Paused");
   auto gameOverText = createText("Game Over!");
+  auto scoreText = createText("1");
+  scoreText->setPosition(sf::Vector2f(static_cast<float>(window.getSize().x) - (scoreText->getString().getSize() * 30), 0));
   float fraps;
   auto playerSpeed = 400.0f;
   sf::Clock fps;
@@ -150,6 +152,7 @@ int WinMain() {
                   sf::Vector2f(window.getSize().x / 2 - player->getSize().x,
                                window.getSize().y - player->getSize().y * 2));
               bullets.push_back(std::move(createBullet(window.getSize())));
+              scoreText->setString("1");
               difficultyTimer.restart();
             }
             break;
@@ -205,6 +208,8 @@ int WinMain() {
           bullet->difficultyTick();
         }
         bullets.push_back(std::move(createBullet(window.getSize())));
+        scoreText->setString(std::to_string(std::stoi(scoreText->getString().toAnsiString()) + 1 ));
+        scoreText->setPosition(sf::Vector2f(static_cast<float>(window.getSize().x) - (scoreText->getString().getSize() * 25), 0));
         difficultyTimer.restart();
       }
 
@@ -219,7 +224,7 @@ int WinMain() {
       if (leftFlag) {
         newPlayerPosition.x =
             std::max(player->getPosition().x - playerSpeed * fraps,
-                     -player->getSize().x);
+                     0.f);
       }
       if (rightFlag) {
         newPlayerPosition.x =
@@ -229,7 +234,7 @@ int WinMain() {
       if (upFlag) {
         newPlayerPosition.y =
             std::max(player->getPosition().y - playerSpeed * fraps,
-                     -player->getSize().y);
+                     0.f);
       }
       if (downFlag) {
         newPlayerPosition.y =
@@ -252,6 +257,9 @@ int WinMain() {
         gameOver = true;
       }
     }
+
+	// draw score
+    drawables.push_back(scoreText.get());
 
     // show proper menus based on flags
     if (gameOver) {
